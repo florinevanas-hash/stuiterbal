@@ -59,3 +59,38 @@ def draw_stars(stars, tick):
         radius = max(1, int(s["r"]))
         pygame.draw.circle(screen, color, (int(s["x"]), int(s["y"])), radius)
 
+def draw_pipe(pipe):
+    x      = int(pipe["x"])
+    gap_y  = pipe["gap_y"]
+    top_h  = int(gap_y - PIPE_GAP / 2)
+    bot_y  = int(gap_y + PIPE_GAP / 2)
+    bot_h  = H - bot_y
+
+    def draw_col(px, py, pw, ph, flipped):
+        if ph <= 0:
+            return
+        # Body — vertical gradient via columns
+        for i in range(pw):
+            t = (i / pw) * (1 - i / pw) * 4
+            r = int(58  + 49 * t)
+            g = int(42  + 34 * t)
+            b = int(26  + 20 * t)
+            pygame.draw.line(screen, (r, g, b), (px + i, py), (px + i, py + ph))
+        # Border
+        pygame.draw.rect(screen, (139, 99, 64), (px, py, pw, ph), 2)
+        # Craters
+        for cx_r, cy_r in [(0.3, 0.2), (0.7, 0.5), (0.5, 0.75)]:
+            ccx = int(px + cx_r * pw)
+            ccy_r = (1 - cy_r) if flipped else cy_r
+            ccy = int(py + ccy_r * ph)
+            if ccy < py or ccy > py + ph:
+                continue
+            cr = max(2, int(0.07 * pw))
+            pygame.draw.circle(screen, (20, 12, 5), (ccx, ccy), cr)
+        # Cap
+        cap_h = 18
+        cap_y = (py + ph - cap_h) if flipped else py
+        pygame.draw.rect(screen, (192, 128, 80), (px - 6, cap_y, pw + 12, cap_h))
+
+    draw_col(x, 0,     PIPE_W, top_h, True)
+    draw_col(x, bot_y, PIPE_W, bot_h, False)
