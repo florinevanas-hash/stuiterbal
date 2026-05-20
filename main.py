@@ -133,4 +133,42 @@ def draw_rat(surf, y, vy, tick):
                            (radius + 1, radius + 1), radius)
         tmp.blit(glow_surf, (tc - 30 - radius, tc + 4 - radius))
     # Helmet visor
-    pygame.draw.ellipse(tmp, (192, 172, 255, 140), (tc - 4, tc - 22, 22, 14))   
+    pygame.draw.ellipse(tmp, (192, 172, 255, 140), (tc - 4, tc - 22, 22, 14)) 
+
+    rotated = pygame.transform.rotate(tmp, -math.degrees(angle))
+    rw, rh  = rotated.get_size()
+    surf.blit(rotated, (cx - rw // 2, cy - rh // 2))
+
+def blit_text_centered(text, font, color, y, shadow=True):
+    if shadow:
+        s = font.render(text, True, (255, 255, 255, 30))
+        screen.blit(s, (W // 2 - s.get_width() // 2 + 2, y + 2))
+    rendered = font.render(text, True, color)
+    screen.blit(rendered, (W // 2 - rendered.get_width() // 2, y))
+
+
+def draw_panel(lines, px, py, pw, ph):
+    panel = pygame.Surface((pw, ph), pygame.SRCALPHA)
+    panel.fill((5, 3, 20, 185))
+    screen.blit(panel, (px, py))
+    pygame.draw.rect(screen, (80, 60, 140), (px, py, pw, ph), 2, border_radius=18)
+    y_off = py + 24
+    for text, font, color in lines:
+        blit_text_centered(text, font, color, y_off, shadow=False)
+        y_off += font.get_height() + 10
+
+def draw_idle():
+    draw_panel([
+        ("SPACE RAT",              font_lg, (208, 176, 255)),
+        ("Click or Space to flap", font_md, (255, 255, 255)),
+        ("Navigate asteroid fields!", font_sm, (180, 160, 255)),
+    ], W // 2 - 155, H // 2 - 90, 310, 170)
+
+
+def draw_dead(score, best):
+    draw_panel([
+        ("GAME OVER",              font_lg, (255,  80,  80)),
+        (f"Score: {score}",        font_md, (255, 255, 255)),
+        (f"Best:  {best}",         font_md, (208, 176, 255)),
+        ("Click or Space to retry",font_sm, (200, 200, 255)),
+    ], W // 2 - 155, H // 2 - 110, 310, 215)
