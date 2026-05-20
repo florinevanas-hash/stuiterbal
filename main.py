@@ -172,3 +172,142 @@ def draw_dead(score, best):
         (f"Best:  {best}",         font_md, (208, 176, 255)),
         ("Click or Space to retry",font_sm, (200, 200, 255)),
     ], W // 2 - 155, H // 2 - 110, 310, 215)
+
+def draw_score(score):
+    txt = font_lg.render(str(score), True, (255, 255, 255))
+    screen.blit(txt, (W // 2 - txt.get_width() // 2, 20))
+
+
+def make_state():
+    return {
+        "mode":        "idle",
+        "rat_y":       H / 2,
+        "rat_vy":      0.0,
+        "pipes":       [],
+        "score":       0,
+        "best":        0,
+        "tick":        0,
+        "pipe_timer":  0,
+        "dead_frames": 0,
+        "stars":       make_stars(),
+    }
+def start_game(state):
+    best = state["best"]
+    state.update({
+        "mode":        "playing",
+        "rat_y":       H / 2,
+        "rat_vy":      FLAP,
+        "pipes":       [],
+        "score":       0,
+        "tick":        0,
+        "pipe_timer":  0,
+        "dead_frames": 0,
+        "best":        best,
+    })
+
+
+def flap(state):
+    if state["mode"] in ("idle", "dead"):
+        start_game(state)
+    elif state["mode"] == "playing":
+        state["rat_vy"] = FLAP
+
+def update(state):
+    if state["mode"] != "playing":
+        return
+
+    state["tick"]       += 1
+    state["pipe_timer"] += 1
+
+    # Scroll stars
+    for s in state["stars"]:
+        s["x"] -= s["speed"]
+        if s["x"] < 0:
+            s["x"] = W
+            s["y"] = random.uniform(0, H)
+
+    # Physics
+    state["rat_vy"] += GRAVITY
+    state["rat_y"]  += state["rat_vy"]
+
+    # Spawn pipes
+    if state["pipe_timer"] >= PIPE_FRAMES:
+        state["pipe_timer"] = 0
+        state["pipes"].append(new_pipe())
+
+    # Move pipes + score
+    for p in state["pipes"]:
+        p["x"] -= PIPE_SPEED
+        if not p["scored"] and p["x"] + PIPE_W < RAT_X:
+            p["scored"]    = True
+            state["score"] += 1
+            state["best"]   = max(state["best"], state["score"])
+
+    state["pipes"] = [p for p in state["pipes"] if p["x"] + PIPE_W > -10]
+
+    # Collision
+    hitbox = RAT_R - 5
+    ry     = state["rat_y"]
+    dead   = ry - hitbox < 0 or ry + hitbox > H
+    for p in state["pipes"]:
+        if RAT_X + hitbox > p["x"] and RAT_X - hitbox < p["x"] + PIPE_W:
+            if (ry - hitbox < p["gap_y"] - PIPE_GAP / 2 or
+                    ry + hitbox > p["gap_y"] + PIPE_GAP / 2):
+                dead = True
+
+    if dead:
+        state["mode"]        = "dead"
+        state["dead_frames"] = 0
+
+    if state["mode"] == "dead":
+        state["dead_frames"] += 1
+
+
+def main():
+    state = make_state()
+    bg_surface = pygame.Surface((W, H))
+    draw_bg()  # draw the gradient once into bg_surface via screen then copy
+    bg_surface.blit(screen, (0, 0))
+
+    running = True
+    while running:
+        clock.tick(60)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_SPACE, pygame.K_UP):
+                    flap(state)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                flap(state)
+
+        update(state)
+
+        # Render
+        screen.blit(bg_surface, (0, 0))
+        draw_stars(state["stars"], state["tick"])
+
+        for p in state["pipes"]:
+            draw_pipe(p)
+
+        if state["mode"] == "idle":
+            bob_y = H / 2 + math.sin(pygame.time.get_ticks() * 0.002) * 8
+            draw_rat(screen, bob_y, 0, state["tick"])
+            draw_idle()
+        else:
+            draw_rat(screen, state["rat_y"], state["rat_vy"], state["tick"])
+            if state["mode"] == "playing":
+                draw_score(state["score"])
+            elif state["mode"] == "dead":
+                draw_score(state["score"])
+                if state["dead_frames"] > 20:
+                    draw_dead(state["score"], state["best"])
+
+        pygame.display.flip()
+
+    pygame.quit()
+
+
+if __name__ == "__main__":
+    main()
