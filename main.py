@@ -41,7 +41,7 @@ except Exception:
     font_sm = pygame.font.SysFont(None, 15)
 
 
-def make_stars(n=80):
+def make_stars(n=200):
     return [
         {
             "x": random.uniform(0, W),
@@ -49,15 +49,98 @@ def make_stars(n=80):
             "r": random.uniform(0.5, 2.2),
             "speed": random.uniform(0.1, 0.5),
             "bright": random.uniform(0.4, 1.0),
+            "phase": random.uniform(0, math.pi * 2),
         }
         for _ in range(n)
     ]
 
+def make_planets():
+    return [
+        {"x": 380.0, "y": 520, "r": 90,  "speed": 0.18,
+         "color": (90, 20, 130),  "band": (60, 10, 90),   "ring": False},
+        {"x": 60.0,  "y": 130, "r": 50,  "speed": 0.10,
+         "color": (20, 70, 110),  "band": (10, 40, 70),   "ring": False},
+        {"x": 450.0, "y": 340, "r": 110, "speed": 0.08,
+         "color": (110, 55, 15), "band": (80, 35, 8),     "ring": True},
+    ]
+
+def make_comets():
+    return [
+        {"x": -200.0, "y": random.uniform(30, H - 30),
+         "speed": random.uniform(4, 7), "tail": random.randint(80, 150),
+         "active": False, "timer": random.randint(60, 300)},
+        {"x": -200.0, "y": random.uniform(30, H - 30),
+         "speed": random.uniform(3, 6), "tail": random.randint(60, 120),
+         "active": False, "timer": random.randint(200, 500)},
+    ]
 
 def new_pipe():
     min_g = PIPE_GAP / 2 + 40
     max_g = H - PIPE_GAP / 2 - 40
     return {"x": float(W + PIPE_W), "gap_y": random.uniform(min_g, max_g), "scored": False}
+
+bg_surface = pygame.Surface((W, H))
+for _y in range(H):
+    t = _y / H
+    r = int(6  + 14 * t)
+    g = int(0  + 3  * t)
+    b = int(14 + 40 * t)
+    pygame.draw.line(bg_surface, (r, g, b), (0, _y), (W, _y))
+
+def draw_planet(surf, p):
+    cx, cy, r = int(p["x"]), int(p["y"]), int(p["r"])
+    cr, cg, cb = p["color"]
+
+    # Draw planet layers from outside in for a lit-sphere look
+    for i in range(r, 0, -1):
+        t = i / r
+        dr = int(cr * t * 0.9)
+        dg = int(cg * t * 0.9)
+        db = int(cb * t * 0.9)
+        pygame.draw.circle(surf, (dr, dg, db), (cx, cy), i)
+
+    # Highlight (top-left)
+    hi_r = r // 3
+    hi_surf = pygame.Surface((hi_r * 2, hi_r * 2), pygame.SRCALPHA)
+    pygame.draw.circle(hi_surf, (255, 255, 255, 35), (hi_r, hi_r), hi_r)
+    surf.blit(hi_surf, (cx - r // 2 - hi_r, cy - r // 2 - hi_r))
+
+# Bands
+    br, bg2, bb = p["band"]
+    band_surf = pygame.Surface((r * 2 + 2, r * 2 + 2), pygame.SRCALPHA)
+    band_surf.set_clip(pygame.Rect(1, 1, r * 2, r * 2))
+    for i, frac in enumerate([-0.25, 0.1, 0.45]):
+        band_y = int(r + frac * r)
+        bh = max(2, r // 8)
+        ba = pygame.Surface((r * 2, bh), pygame.SRCALPHA)
+        ba.fill((br, bg2, bb, 60 + i * 15))
+        band_surf.blit(ba, (0, band_y))
+    surf.blit(band_surf, (cx - r - 1, cy - r - 1))
+    pygame.draw.circle(surf, (0, 0, 0, 0), (cx, cy), r, 1)
+
+ # Ring
+    if p["ring"]:
+        ring_surf = pygame.Surface((r * 4, r * 2), pygame.SRCALPHA)
+        for ri, (rr_fac, alpha) in enumerate([(1.45, 80), (1.6, 55), (1.78, 35)]):
+            rr = int(r * rr_fac)
+            pygame.draw.ellipse(ring_surf, (200, 150, 80, alpha),
+                                (r * 2 - rr, r - max(3, ri + 2), rr * 2, max(5, (ri + 1) * 4)), 4)
+        surf.blit(ring_surf, (cx - r * 2, cy - r))
+
+def draw_comet(surf, c):
+    if not c["active"]:
+        return
+    x, y, tl = int(c["x"]), int(c["y"]), int(c["tail"])
+    steps = 12
+    for i in range(steps):
+        t = i / steps
+        alpha = int((1 - t) * 200)
+        tx = x + int(t * tl)
+        ty = y - int(t * tl * 0.3)
+        col_surf = pygame.Surface((4, 4), pygame.SRCALPHA)
+        pygame.draw.circle(col_surf, (180 + int(t * 75), 200 + int(t * 55), 255, alpha), (2, 2), max(1, int((1 - t) * 3)))
+        surf.blit(col_surf, (tx - 2, ty - 2))
+    pygame.draw.circle(surf, (255, 255, 255), (x, y), 3)
 
 
 def draw_bg():
