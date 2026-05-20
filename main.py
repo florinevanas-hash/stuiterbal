@@ -28,7 +28,15 @@ except Exception:
     font_sm = pygame.font.SysFont(None, 15)
 
 def make_stars(n=80):
-  
+    return [
+        {
+            "x": random.uniform(0, W),
+            "y": random.uniform(0, H),
+            "speed": random.uniform(0.1, 0.5),
+            "bright": random.uniform(0.4, 1.0),
+        }
+        for _ in range(n)
+    ]
 
 
 
