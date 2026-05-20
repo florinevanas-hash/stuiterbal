@@ -37,7 +37,25 @@ def make_stars(n=80):
         }
         for _ in range(n)
     ]
+def new_pipe():
+    min_g = PIPE_GAP / 2 + 40
+    max_g = H - PIPE_GAP / 2 - 40
+    return {"x": float(W + PIPE_W), "gap_y": random.uniform(min_g, max_g), "scored": False}
 
+def draw_bg():
+    for y in range(0, H, 2):
+        t = y / H
+        r = int(5  + 5  * t)
+        g = int(3  + 2  * t)
+        b = int(15 + 22 * t)
+        pygame.draw.line(screen, (r, g, b), (0, y), (W, y))
 
-
+def draw_stars(stars, tick):
+    for s in stars:
+        twinkle = 0.7 + 0.3 * math.sin(tick * 0.05 + s["x"])
+        brightness = int(s["bright"] * twinkle * 255)
+        brightness = max(0, min(255, brightness))
+        color = (brightness, int(brightness * 0.9), brightness)
+        radius = max(1, int(s["r"]))
+        pygame.draw.circle(screen, color, (int(s["x"]), int(s["y"])), radius)
 
