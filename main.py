@@ -27,7 +27,7 @@ except Exception:
     font_md = pygame.font.SysFont(None, 22)
     font_sm = pygame.font.SysFont(None, 15)
 
-
+def make_stars(n=80):
   
 
 
