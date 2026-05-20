@@ -287,45 +287,53 @@ def draw_rat(surf, y, vy, tick):
     surf.blit(rotated, (cx - rw // 2, cy - rh // 2))
 
 
-def blit_text_centered(text, font, color, y, shadow=True):
-    if shadow:
-        s = font.render(text, True, (255, 255, 255, 30))
-        screen.blit(s, (W // 2 - s.get_width() // 2 + 2, y + 2))
+def blit_centered(surf, text, font, color, y, shadow_col=(0, 0, 0)):
+    shadow = font.render(text, True, shadow_col)
     rendered = font.render(text, True, color)
-    screen.blit(rendered, (W // 2 - rendered.get_width() // 2, y))
+    surf.blit(shadow,   (W // 2 - rendered.get_width() // 2 + 2, y + 2))
+    surf.blit(rendered, (W // 2 - rendered.get_width() // 2,     y))
 
 
-def draw_panel(lines, px, py, pw, ph):
-    panel = pygame.Surface((pw, ph), pygame.SRCALPHA)
-    panel.fill((5, 3, 20, 185))
-    screen.blit(panel, (px, py))
-    pygame.draw.rect(screen, (80, 60, 140), (px, py, pw, ph), 2, border_radius=18)
-    y_off = py + 24
-    for text, font, color in lines:
-        blit_text_centered(text, font, color, y_off, shadow=False)
-        y_off += font.get_height() + 10
+def draw_panel(surf, x, y, w, h, border=(100, 60, 200)):
+    panel = pygame.Surface((w, h), pygame.SRCALPHA)
+    panel.fill((8, 2, 22, 200))
+    surf.blit(panel, (x, y))
+    pygame.draw.rect(surf, border, (x, y, w, h), 2, border_radius=12)
 
 
-def draw_idle():
-    draw_panel([
-        ("SPACE RAT",              font_lg, (208, 176, 255)),
-        ("Click or Space to flap", font_md, (255, 255, 255)),
-        ("Navigate asteroid fields!", font_sm, (180, 160, 255)),
-    ], W // 2 - 155, H // 2 - 90, 310, 170)
+def draw_button(surf, label, font, bx, by, bw, bh,
+                bg=(34, 170, 34), border=(68, 220, 68)):
+    pygame.draw.rect(surf, bg,     (bx, by, bw, bh), border_radius=8)
+    pygame.draw.rect(surf, border, (bx, by, bw, bh), 3, border_radius=8)
+    txt = font.render(label, True, (255, 255, 255))
+    surf.blit(txt, (bx + bw // 2 - txt.get_width() // 2,
+                    by + bh // 2 - txt.get_height() // 2))
 
 
-def draw_dead(score, best):
-    draw_panel([
-        ("GAME OVER",              font_lg, (255,  80,  80)),
-        (f"Score: {score}",        font_md, (255, 255, 255)),
-        (f"Best:  {best}",         font_md, (208, 176, 255)),
-        ("Click or Space to retry",font_sm, (200, 200, 255)),
-    ], W // 2 - 155, H // 2 - 110, 310, 215)
+def draw_idle(surf):
+    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 195)
+    blit_centered(surf, "SPACE", font_xl, (255, 255, 255), H // 2 - 100)
+    blit_centered(surf, "RAT",   font_xl, (255, 221, 0),   H // 2 - 52)
+    draw_button(surf, "START", font_md, W // 2 - 70, H // 2 + 4, 140, 46)
+    hint = font_sm.render("or press Space / Up", True, (180, 160, 255))
+    surf.blit(hint, (W // 2 - hint.get_width() // 2, H // 2 + 62))
 
 
-def draw_score(score):
-    txt = font_lg.render(str(score), True, (255, 255, 255))
-    screen.blit(txt, (W // 2 - txt.get_width() // 2, 20))
+def draw_dead(surf, score, best):
+    draw_panel(surf, W // 2 - 145, H // 2 - 120, 290, 240, border=(200, 50, 50))
+    blit_centered(surf, "GAME OVER", font_lg, (255, 80, 80),  H // 2 - 108)
+    blit_centered(surf, "SCORE",     font_sm, (200, 200, 200),H // 2 - 64)
+    blit_centered(surf, str(score),  font_xl, (255, 221, 0),  H // 2 - 36)
+    blit_centered(surf, "BEST",      font_sm, (170, 170, 170),H // 2 + 16)
+    blit_centered(surf, str(best),   font_md, (208, 176, 255),H // 2 + 38)
+    draw_button(surf, "RETRY", font_sm, W // 2 - 55, H // 2 + 76, 110, 38)
+
+
+def draw_score(surf, score):
+    shadow = font_xl.render(str(score), True, (0, 0, 0))
+    txt    = font_xl.render(str(score), True, (255, 221, 0))
+    surf.blit(shadow, (W // 2 - txt.get_width() // 2 + 3, 23))
+    surf.blit(txt,    (W // 2 - txt.get_width() // 2,     20))
 
 
 def make_state():
@@ -340,6 +348,9 @@ def make_state():
         "pipe_timer":  0,
         "dead_frames": 0,
         "stars":       make_stars(),
+        "planets":     make_planets(),
+        "comets":      make_comets(),
+        "trail":       [],
     }
 
 
@@ -419,7 +430,7 @@ def update(state):
 def main():
     state = make_state()
     bg_surface = pygame.Surface((W, H))
-    draw_bg()  # draw the gradient once into bg_surface via screen then copy
+    draw_bg(bg_surface)  # draw the gradient once into bg_surface via screen then copy
     bg_surface.blit(screen, (0, 0))
 
     running = True
