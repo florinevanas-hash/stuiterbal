@@ -27,20 +27,25 @@ except Exception:
     font_md = pygame.font.SysFont(None, 22)
     font_sm = pygame.font.SysFont(None, 15)
 
+
 def make_stars(n=80):
     return [
         {
             "x": random.uniform(0, W),
             "y": random.uniform(0, H),
+            "r": random.uniform(0.5, 2.2),
             "speed": random.uniform(0.1, 0.5),
             "bright": random.uniform(0.4, 1.0),
         }
         for _ in range(n)
     ]
+
+
 def new_pipe():
     min_g = PIPE_GAP / 2 + 40
     max_g = H - PIPE_GAP / 2 - 40
     return {"x": float(W + PIPE_W), "gap_y": random.uniform(min_g, max_g), "scored": False}
+
 
 def draw_bg():
     for y in range(0, H, 2):
@@ -50,6 +55,7 @@ def draw_bg():
         b = int(15 + 22 * t)
         pygame.draw.line(screen, (r, g, b), (0, y), (W, y))
 
+
 def draw_stars(stars, tick):
     for s in stars:
         twinkle = 0.7 + 0.3 * math.sin(tick * 0.05 + s["x"])
@@ -58,6 +64,7 @@ def draw_stars(stars, tick):
         color = (brightness, int(brightness * 0.9), brightness)
         radius = max(1, int(s["r"]))
         pygame.draw.circle(screen, color, (int(s["x"]), int(s["y"])), radius)
+
 
 def draw_pipe(pipe):
     x      = int(pipe["x"])
@@ -94,6 +101,7 @@ def draw_pipe(pipe):
 
     draw_col(x, 0,     PIPE_W, top_h, True)
     draw_col(x, bot_y, PIPE_W, bot_h, False)
+
 
 def draw_rat(surf, y, vy, tick):
     cx, cy = RAT_X, int(y)
@@ -133,11 +141,12 @@ def draw_rat(surf, y, vy, tick):
                            (radius + 1, radius + 1), radius)
         tmp.blit(glow_surf, (tc - 30 - radius, tc + 4 - radius))
     # Helmet visor
-    pygame.draw.ellipse(tmp, (192, 172, 255, 140), (tc - 4, tc - 22, 22, 14)) 
+    pygame.draw.ellipse(tmp, (192, 172, 255, 140), (tc - 4, tc - 22, 22, 14))
 
     rotated = pygame.transform.rotate(tmp, -math.degrees(angle))
     rw, rh  = rotated.get_size()
     surf.blit(rotated, (cx - rw // 2, cy - rh // 2))
+
 
 def blit_text_centered(text, font, color, y, shadow=True):
     if shadow:
@@ -157,6 +166,7 @@ def draw_panel(lines, px, py, pw, ph):
         blit_text_centered(text, font, color, y_off, shadow=False)
         y_off += font.get_height() + 10
 
+
 def draw_idle():
     draw_panel([
         ("SPACE RAT",              font_lg, (208, 176, 255)),
@@ -172,6 +182,7 @@ def draw_dead(score, best):
         (f"Best:  {best}",         font_md, (208, 176, 255)),
         ("Click or Space to retry",font_sm, (200, 200, 255)),
     ], W // 2 - 155, H // 2 - 110, 310, 215)
+
 
 def draw_score(score):
     txt = font_lg.render(str(score), True, (255, 255, 255))
@@ -191,6 +202,8 @@ def make_state():
         "dead_frames": 0,
         "stars":       make_stars(),
     }
+
+
 def start_game(state):
     best = state["best"]
     state.update({
@@ -211,6 +224,7 @@ def flap(state):
         start_game(state)
     elif state["mode"] == "playing":
         state["rat_vy"] = FLAP
+
 
 def update(state):
     if state["mode"] != "playing":
