@@ -37,7 +37,7 @@ def make_stars(n=80):
         }
         for _ in range(n)
     ]
-rr
+
 
 
 
