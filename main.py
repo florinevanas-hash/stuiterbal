@@ -143,26 +143,39 @@ def draw_comet(surf, c):
     pygame.draw.circle(surf, (255, 255, 255), (x, y), 3)
 
 
-def draw_bg():
-    for y in range(0, H, 2):
-        t = y / H
-        r = int(5  + 5  * t)
-        g = int(3  + 2  * t)
-        b = int(15 + 22 * t)
-        pygame.draw.line(screen, (r, g, b), (0, y), (W, y))
+# ── Drawing ────────────────────────────────────────────────────────────────────
 
-
-def draw_stars(stars, tick):
+def draw_stars(surf, stars, tick):
     for s in stars:
-        twinkle = 0.7 + 0.3 * math.sin(tick * 0.05 + s["x"])
+        twinkle = 0.6 + 0.4 * math.sin(tick * 0.04 + s["phase"])
         brightness = int(s["bright"] * twinkle * 255)
         brightness = max(0, min(255, brightness))
         color = (brightness, int(brightness * 0.9), brightness)
-        radius = max(1, int(s["r"]))
-        pygame.draw.circle(screen, color, (int(s["x"]), int(s["y"])), radius)
+        r = max(1, int(s["r"]))
+        if r > 1:
+            pygame.draw.rect(surf, color, (int(s["x"]), int(s["y"]), r, r))
+        else:
+            pygame.draw.circle(surf, color, (int(s["x"]), int(s["y"])), 1)
 
 
-def draw_pipe(pipe):
+def draw_trail(surf, trail):
+    n = len(trail)
+    if n < 2:
+        return
+    for i in range(n - 1):
+        t = i / (n - 1)
+        ci = int(t * (len(RAINBOW) - 1))
+        r, g, b = RAINBOW[ci]
+        alpha = int(t * 190)
+        lw = max(1, int(t * 8))
+        x1, y1 = int(trail[i][0]),   int(trail[i][1])
+        x2, y2 = int(trail[i+1][0]), int(trail[i+1][1])
+        line_surf = pygame.Surface((W, H), pygame.SRCALPHA)
+        pygame.draw.line(line_surf, (r, g, b, alpha), (x1, y1), (x2, y2), lw)
+        surf.blit(line_surf, (0, 0))
+
+
+def draw_pipe(surf, pipe):
     x      = int(pipe["x"])
     gap_y  = pipe["gap_y"]
     top_h  = int(gap_y - PIPE_GAP / 2)
@@ -172,28 +185,31 @@ def draw_pipe(pipe):
     def draw_col(px, py, pw, ph, flipped):
         if ph <= 0:
             return
-        # Body — vertical gradient via columns
+        # Base dark rock
         for i in range(pw):
-            t = (i / pw) * (1 - i / pw) * 4
-            r = int(58  + 49 * t)
-            g = int(42  + 34 * t)
-            b = int(26  + 20 * t)
-            pygame.draw.line(screen, (r, g, b), (px + i, py), (px + i, py + ph))
-        # Border
-        pygame.draw.rect(screen, (139, 99, 64), (px, py, pw, ph), 2)
-        # Craters
-        for cx_r, cy_r in [(0.3, 0.2), (0.7, 0.5), (0.5, 0.75)]:
-            ccx = int(px + cx_r * pw)
-            ccy_r = (1 - cy_r) if flipped else cy_r
-            ccy = int(py + ccy_r * ph)
-            if ccy < py or ccy > py + ph:
+            shade = int(30 + 20 * math.sin(i / pw * math.pi))
+            pygame.draw.line(surf, (shade + 8, shade + 4, shade), (px + i, py), (px + i, py + ph))
+        pygame.draw.rect(surf, (20, 12, 5, 120), (px, py, pw, ph))
+        pygame.draw.rect(surf, (74, 56, 40), (px, py, pw, ph), 2)
+        # Crystal gems
+        gems = [(0.2, 0.25), (0.55, 0.5), (0.75, 0.15), (0.35, 0.72)]
+        for gx_r, gy_r in gems:
+            gx = int(px + gx_r * pw)
+            gy_raw = (1 - gy_r) if flipped else gy_r
+            gy = int(py + gy_raw * ph)
+            if gy < py or gy > py + ph:
                 continue
-            cr = max(2, int(0.07 * pw))
-            pygame.draw.circle(screen, (20, 12, 5), (ccx, ccy), cr)
+            gs = max(3, int(pw * 0.09))
+            gem_surf = pygame.Surface((gs * 2 + 2, gs * 2 + 2), pygame.SRCALPHA)
+            pts = [(gs, 0), (gs * 2, gs), (gs, gs * 2), (0, gs)]
+            pygame.draw.polygon(gem_surf, (80, 120, 200, 140), pts)
+            pygame.draw.polygon(gem_surf, (160, 210, 255, 180), pts, 1)
+            surf.blit(gem_surf, (gx - gs, gy - gs))
         # Cap
-        cap_h = 18
+        cap_h = 16
         cap_y = (py + ph - cap_h) if flipped else py
-        pygame.draw.rect(screen, (192, 128, 80), (px - 6, cap_y, pw + 12, cap_h))
+        pygame.draw.rect(surf, (106, 72, 40), (px - 5, cap_y, pw + 10, cap_h))
+        pygame.draw.rect(surf, (138, 96, 48), (px - 5, cap_y, pw + 10, 4))
 
     draw_col(x, 0,     PIPE_W, top_h, True)
     draw_col(x, bot_y, PIPE_W, bot_h, False)
@@ -201,43 +217,70 @@ def draw_pipe(pipe):
 
 def draw_rat(surf, y, vy, tick):
     cx, cy = RAT_X, int(y)
-    angle  = max(-0.45, min(0.9, vy * 0.06))
+    angle  = max(-0.45, min(0.7, vy * 0.055))
 
-    tmp = pygame.Surface((80, 80), pygame.SRCALPHA)
-    tc  = 40  # centre of temp surface
+    tmp = pygame.Surface((90, 110), pygame.SRCALPHA)
+    tc  = 44  # centre x/y in temp surface
 
-    # Body
-    pygame.draw.ellipse(tmp, (138, 122, 106), (tc - 24, tc - 14, 48, 30))
-    # Rear
-    pygame.draw.ellipse(tmp, (122, 106, 90),  (tc - 28, tc - 10, 26, 22))
-    # Head
-    pygame.draw.ellipse(tmp, (192, 160, 128), (tc + 6, tc - 26, 22, 26))
-    # Ear outer / inner
-    pygame.draw.ellipse(tmp, (192, 160, 128), (tc - 28, tc - 28, 14, 24))
-    pygame.draw.ellipse(tmp, (255, 144, 144), (tc - 26, tc - 26,  9, 16))
-    # Nose
-    pygame.draw.ellipse(tmp, (255,  80,  80), (tc + 22, tc - 20, 10,  8))
-    pygame.draw.ellipse(tmp, (255, 140, 140), (tc + 23, tc - 19,  7,  5))
-    # Whiskers
-    for i, (dx, dy) in enumerate([(12, 0), (14, -4), (12, -8)]):
-        pygame.draw.line(tmp, (255, 208, 176),
-                         (tc + 14, tc - 18 + i * 4),
-                         (tc + 14 + dx, tc - 18 + i * 4 + dy), 1)
     # Tail
-    pts = [(tc - 26, tc + 14), (tc - 36, tc + 22),
-           (tc - 26, tc + 34), (tc - 16, tc + 40)]
-    pygame.draw.lines(tmp, (224, 192, 160), False, pts, 2)
-    # Thruster glow
-    flicker = 0.7 + 0.3 * math.sin(tick * 0.3)
-    glow_r  = int(14 * flicker)
-    for radius in range(glow_r, 0, -2):
-        alpha = int(200 * (radius / glow_r))
-        glow_surf = pygame.Surface((radius * 2 + 2, radius * 2 + 2), pygame.SRCALPHA)
-        pygame.draw.circle(glow_surf, (140, 100, 255, alpha),
-                           (radius + 1, radius + 1), radius)
-        tmp.blit(glow_surf, (tc - 30 - radius, tc + 4 - radius))
-    # Helmet visor
-    pygame.draw.ellipse(tmp, (192, 172, 255, 140), (tc - 4, tc - 22, 22, 14))
+    pts = [(tc, tc + RAT_R + 4),   # beginpunt
+        (tc - 10, tc + RAT_R + 10),  # naar links
+        (tc + 8,  tc + RAT_R + 20),  # naar rechts
+        (tc - 6,  tc + RAT_R + 30),  # weer naar links
+        (tc + 12, tc + RAT_R + 40)]
+
+    pygame.draw.lines(tmp, (200, 160, 96), False, pts, 3)
+
+    # Legs
+    pygame.draw.ellipse(tmp, (200, 160, 96), (tc - 16, tc + RAT_R - 2, 12,  8))
+    pygame.draw.ellipse(tmp, (200, 160, 96), (tc + 4,  tc + RAT_R - 2, 12,  8))
+
+    # Helmet shadow
+    pygame.draw.circle(tmp, (0, 0, 0, 70), (tc + 1, tc + 1), RAT_R + 1)
+
+    # Helmet glass bubble
+    pygame.draw.circle(tmp, (60, 100, 200, 30), (tc, tc), RAT_R)
+    pygame.draw.circle(tmp, (180, 230, 255, 210), (tc, tc), RAT_R, 3)
+
+    # Rat body inside helmet
+    # Clip to circle (draw inside area only)
+    inner_surf = pygame.Surface((RAT_R * 2, RAT_R * 2), pygame.SRCALPHA)
+    # Body
+    pygame.draw.ellipse(inner_surf, (154, 138, 112), (RAT_R - 13, RAT_R - 5,  26, 20))
+    # Head
+    pygame.draw.ellipse(inner_surf, (176, 152, 120), (RAT_R - 11, RAT_R - 16, 22, 22))
+    # Ears
+    pygame.draw.ellipse(inner_surf, (176, 152, 120), (RAT_R - 18, RAT_R - 24, 10, 14))
+    pygame.draw.ellipse(inner_surf, (232, 144, 144), (RAT_R - 17, RAT_R - 23,  6, 10))
+    pygame.draw.ellipse(inner_surf, (176, 152, 120), (RAT_R + 8,  RAT_R - 24, 10, 14))
+    pygame.draw.ellipse(inner_surf, (232, 144, 144), (RAT_R + 9,  RAT_R - 23,  6, 10))
+    # Eyes (pixel squares)
+    pygame.draw.rect(inner_surf, (10, 10, 20),    (RAT_R - 7, RAT_R - 12, 5, 5))
+    pygame.draw.rect(inner_surf, (10, 10, 20),    (RAT_R + 3, RAT_R - 12, 5, 5))
+    pygame.draw.rect(inner_surf, (255, 255, 255), (RAT_R - 6, RAT_R - 12, 2, 2))
+    pygame.draw.rect(inner_surf, (255, 255, 255), (RAT_R + 4, RAT_R - 12, 2, 2))
+    # Nose
+    pygame.draw.ellipse(inner_surf, (224, 80, 96), (RAT_R - 3, RAT_R - 5, 6, 5))
+    # Whiskers
+    for wx, wy, wx2, wy2 in [
+        (RAT_R - 3, RAT_R - 5, RAT_R - 14, RAT_R - 7),
+        (RAT_R - 3, RAT_R - 4, RAT_R - 15, RAT_R - 3),
+        (RAT_R + 3, RAT_R - 5, RAT_R + 14, RAT_R - 7),
+        (RAT_R + 3, RAT_R - 4, RAT_R + 15, RAT_R - 3),
+    ]:
+        pygame.draw.line(inner_surf, (255, 230, 180, 200), (wx, wy), (wx2, wy2), 1)
+
+    # Clip inner_surf to circle mask
+    mask = pygame.Surface((RAT_R * 2, RAT_R * 2), pygame.SRCALPHA)
+    pygame.draw.circle(mask, (255, 255, 255, 255), (RAT_R, RAT_R), RAT_R - 2)
+    inner_surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+    tmp.blit(inner_surf, (tc - RAT_R, tc - RAT_R))
+
+    # Glint reflection
+    glint = pygame.Surface((12, 12), pygame.SRCALPHA)
+    pygame.draw.arc(glint, (255, 255, 255, 115), (0, 0, 12, 12),
+                    math.pi * 0.1, math.pi * 1.2, 2)
+    tmp.blit(glint, (tc - 14, tc - 12))
 
     rotated = pygame.transform.rotate(tmp, -math.degrees(angle))
     rw, rh  = rotated.get_size()
