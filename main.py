@@ -377,12 +377,56 @@ def flap(state):
 
 
 def update(state):
+    # Always scroll background
+    for s in state["stars"]:
+        s["x"] -= s["speed"]
+        if s["x"] < 0:
+            s["x"] = W
+            s["y"] = random.uniform(0, H)
+
+    for p in state["planets"]:
+        p["x"] -= p["speed"]
+        if p["x"] + p["r"] < -20:
+            p["x"] = W + p["r"] + random.uniform(50, 150)
+            p["y"] = random.uniform(p["r"] * 0.6, H - p["r"] * 0.6)
+
+    for c in state["comets"]:
+        if not c["active"]:
+            c["timer"] -= 1
+            if c["timer"] <= 0:
+                c["active"] = True
+                c["x"] = W + 60
+                c["y"] = random.uniform(30, H - 30)
+        else:
+            c["x"] -= c["speed"]
+            if c["x"] < -c["tail"] - 20:
+                c["active"] = False
+                c["timer"]  = random.randint(180, 500)
+    
     if state["mode"] != "playing":
         return
 
     state["tick"]       += 1
     state["pipe_timer"] += 1
 
+    state["rat_vy"] += GRAVITY
+    state["rat_y"]  += state["rat_vy"]
+
+    state["trail"].append((float(RAT_X), float(state["rat_y"])))
+    if len(state["trail"]) > TRAIL_LEN:
+        state["trail"].pop(0)
+
+    if state["pipe_timer"] >= PIPE_INTERVAL:
+        state["pipe_timer"] = 0
+        state["pipes"].append(new_pipe())
+
+    for p in state["pipes"]:
+        p["x"] -= PIPE_SPEED
+        if not p["scored"] and p["x"] + PIPE_W < RAT_X:
+            p["scored"]    = True
+            state["score"] += 1
+            state["best"]   = max(state["best"], state["score"])
+            
     # Scroll stars
     for s in state["stars"]:
         s["x"] -= s["speed"]
