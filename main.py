@@ -9,14 +9,14 @@ screen = pygame.display.set_mode((W, H))
 pygame.display.set_caption("Space Rat")
 clock = pygame.time.Clock()
 
-GRAVITY     = 0.45
-FLAP        = -8.5
-PIPE_SPEED  = 2.8
-PIPE_W      = 60
-PIPE_GAP    = 200
-RAT_X       = 90
-RAT_R       = 20
-PIPE_FRAMES = 90
+GRAVITY       = 0.40
+FLAP          = -8.5
+PIPE_SPEED    = 2.8
+PIPE_W        = 62
+PIPE_GAP      = 165
+RAT_X         = 90
+RAT_R         = 22
+PIPE_INTERVAL = 90
 TRAIL_LEN     = 18
 
 RAINBOW = [
@@ -112,8 +112,7 @@ def draw_planet(surf, p):
     hi_surf = pygame.Surface((hi_r * 2, hi_r * 2), pygame.SRCALPHA)
     pygame.draw.circle(hi_surf, (255, 255, 255, 35), (hi_r, hi_r), hi_r)
     surf.blit(hi_surf, (cx - r // 2 - hi_r, cy - r // 2 - hi_r))
-
-    # Bands
+ # Bands
     br, bg2, bb = p["band"]
     band_surf = pygame.Surface((r * 2 + 2, r * 2 + 2), pygame.SRCALPHA)
     band_surf.set_clip(pygame.Rect(1, 1, r * 2, r * 2))
@@ -134,6 +133,7 @@ def draw_planet(surf, p):
             pygame.draw.ellipse(ring_surf, (200, 150, 80, alpha),
                                 (r * 2 - rr, r - max(3, ri + 2), rr * 2, max(5, (ri + 1) * 4)), 4)
         surf.blit(ring_surf, (cx - r * 2, cy - r))
+
 
 def draw_comet(surf, c):
     if not c["active"]:
@@ -344,6 +344,8 @@ def draw_score(surf, score):
     surf.blit(txt,    (W // 2 - txt.get_width() // 2,     20))
 
 
+# ── Game state ─────────────────────────────────────────────────────────────────
+
 def make_state():
     return {
         "mode":        "idle",
@@ -359,6 +361,7 @@ def make_state():
         "planets":     make_planets(),
         "comets":      make_comets(),
         "trail":       [],
+        "shake":       0,
     }
 
 
@@ -374,10 +377,11 @@ def start_game(state):
         "pipe_timer":  0,
         "dead_frames": 0,
         "best":        best,
+        "trail":       [],
     })
 
 
-def flap(state):
+def do_flap(state):
     if state["mode"] in ("idle", "dead"):
         start_game(state)
     elif state["mode"] == "playing":
@@ -424,6 +428,7 @@ def update(state):
     if len(state["trail"]) > TRAIL_LEN:
         state["trail"].pop(0)
 
+
     if state["pipe_timer"] >= PIPE_INTERVAL:
         state["pipe_timer"] = 0
         state["pipes"].append(new_pipe())
@@ -446,12 +451,19 @@ def update(state):
                     ry + hitbox > p["gap_y"] + PIPE_GAP / 2):
                 dead = True
 
-   if dead:
+    if dead:
         state["mode"]        = "dead"
         state["dead_frames"] = 0
+        state["shake"]       = 20  
 
     if state["mode"] == "dead":
         state["dead_frames"] += 1
+
+        if state["dead_frames"] < 20:
+            state["shake"] = 20 - state["dead_frames"]
+        else:
+            state["shake"] = 0
+
 
 # ── Main loop ──────────────────────────────────────────────────────────────────
 
@@ -469,37 +481,47 @@ def main():
                 if event.key in (pygame.K_SPACE, pygame.K_UP):
                     do_flap(state)
             if event.type == pygame.MOUSEBUTTONDOWN:
-                do_flap(state)
+                    do_flap(state)
 
         update(state)
    
         # --- Render ---
-        screen.blit(bg_surface, (0, 0))
+        render_surf = pygame.Surface((W, H))
+        
+        render_surf.blit(bg_surface, (0, 0))
 
         for p in state["planets"]:
-            draw_planet(screen, p)
+            draw_planet(render_surf, p)
 
-        draw_stars(screen, state["stars"], state["tick"])
+        draw_stars(render_surf, state["stars"], state["tick"])
 
         for c in state["comets"]:
-            draw_comet(screen, c)
+            draw_comet(render_surf, c)
 
         for p in state["pipes"]:
-            draw_pipe(screen, p)
+            draw_pipe(render_surf, p)
 
         if state["mode"] == "idle":
             bob_y = H / 2 + math.sin(pygame.time.get_ticks() * 0.0018) * 10
-            draw_rat(screen, bob_y, 0, state["tick"])
-            draw_idle(screen)
+            draw_rat(render_surf, bob_y, 0, state["tick"])
+            draw_idle(render_surf)
         else:
-            draw_trail(screen, state["trail"])
-            draw_rat(screen, state["rat_y"], state["rat_vy"], state["tick"])
+            draw_trail(render_surf, state["trail"])
+            draw_rat(render_surf, state["rat_y"], state["rat_vy"], state["tick"])
             if state["mode"] == "playing":
-                draw_score(screen, state["score"])
+                draw_score(render_surf, state["score"])
             elif state["mode"] == "dead":
-                draw_score(screen, state["score"])
+                draw_score(render_surf, state["score"])
                 if state["dead_frames"] > 20:
-                    draw_dead(screen, state["score"], state["best"])
+                    draw_dead(render_surf, state["score"], state["best"])
+
+        if state["shake"] > 0:
+            intensiteit = max(1, int(state["shake"] / 3)) 
+            shake_x = random.randint(-intensiteit, intensiteit)
+            shake_y = random.randint(-intensiteit, intensiteit)
+            screen.blit(render_surf, (shake_x, shake_y))
+        else:
+            screen.blit(render_surf, (0, 0))
 
         pygame.display.flip()
 
@@ -508,4 +530,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-  

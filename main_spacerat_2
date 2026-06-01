@@ -362,6 +362,7 @@ def make_state():
         "planets":     make_planets(),
         "comets":      make_comets(),
         "trail":       [],
+        "shake":       0,
     }
 
 
@@ -453,9 +454,13 @@ def update(state):
     if dead:
         state["mode"]        = "dead"
         state["dead_frames"] = 0
+        state["shake"]       = 15
 
     if state["mode"] == "dead":
         state["dead_frames"] += 1
+
+    if state["shake"] > 0:
+        state["shake"] -= 1
 
 
 # ── Main loop ──────────────────────────────────────────────────────────────────
@@ -479,32 +484,42 @@ def main():
         update(state)
 
         # --- Render ---
-        screen.blit(bg_surface, (0, 0))
+        render_surf = pygame.Surface((W, H))
+        
+        render_surf.blit(bg_surface, (0, 0))
 
         for p in state["planets"]:
-            draw_planet(screen, p)
+            draw_planet(render_surf, p)
 
-        draw_stars(screen, state["stars"], state["tick"])
+        draw_stars(render_surf, state["stars"], state["tick"])
 
         for c in state["comets"]:
-            draw_comet(screen, c)
+            draw_comet(render_surf, c)
 
         for p in state["pipes"]:
-            draw_pipe(screen, p)
+            draw_pipe(render_surf, p)
 
         if state["mode"] == "idle":
             bob_y = H / 2 + math.sin(pygame.time.get_ticks() * 0.0018) * 10
-            draw_rat(screen, bob_y, 0, state["tick"])
-            draw_idle(screen)
+            draw_rat(render_surf, bob_y, 0, state["tick"])
+            draw_idle(render_surf)
         else:
-            draw_trail(screen, state["trail"])
-            draw_rat(screen, state["rat_y"], state["rat_vy"], state["tick"])
+            draw_trail(render_surf, state["trail"])
+            draw_rat(render_surf, state["rat_y"], state["rat_vy"], state["tick"])
             if state["mode"] == "playing":
-                draw_score(screen, state["score"])
+                draw_score(render_surf, state["score"])
             elif state["mode"] == "dead":
-                draw_score(screen, state["score"])
+                draw_score(render_surf, state["score"])
                 if state["dead_frames"] > 20:
-                    draw_dead(screen, state["score"], state["best"])
+                    draw_dead(render_surf, state["score"], state["best"])
+
+        # Pas hier de Screen Shake toe!
+        if state["shake"] > 0:
+            shake_x = random.randint(-6, 6)
+            shake_y = random.randint(-6, 6)
+            screen.blit(render_surf, (shake_x, shake_y))
+        else:
+            screen.blit(render_surf, (0, 0))
 
         pygame.display.flip()
 
