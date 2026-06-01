@@ -41,6 +41,8 @@ except Exception:
     font_sm = pygame.font.SysFont(None, 15)
 
 
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
 def make_stars(n=200):
     return [
         {
@@ -54,6 +56,7 @@ def make_stars(n=200):
         for _ in range(n)
     ]
 
+
 def make_planets():
     return [
         {"x": 380.0, "y": 520, "r": 90,  "speed": 0.18,
@@ -63,6 +66,7 @@ def make_planets():
         {"x": 450.0, "y": 340, "r": 110, "speed": 0.08,
          "color": (110, 55, 15), "band": (80, 35, 8),     "ring": True},
     ]
+
 
 def make_comets():
     return [
@@ -74,10 +78,14 @@ def make_comets():
          "active": False, "timer": random.randint(200, 500)},
     ]
 
+
 def new_pipe():
     min_g = PIPE_GAP / 2 + 40
     max_g = H - PIPE_GAP / 2 - 40
     return {"x": float(W + PIPE_W), "gap_y": random.uniform(min_g, max_g), "scored": False}
+
+
+# ── Background ─────────────────────────────────────────────────────────────────
 
 bg_surface = pygame.Surface((W, H))
 for _y in range(H):
@@ -427,33 +435,8 @@ def update(state):
             state["score"] += 1
             state["best"]   = max(state["best"], state["score"])
             
-    # Scroll stars
-    for s in state["stars"]:
-        s["x"] -= s["speed"]
-        if s["x"] < 0:
-            s["x"] = W
-            s["y"] = random.uniform(0, H)
-
-    # Physics
-    state["rat_vy"] += GRAVITY
-    state["rat_y"]  += state["rat_vy"]
-
-    # Spawn pipes
-    if state["pipe_timer"] >= PIPE_FRAMES:
-        state["pipe_timer"] = 0
-        state["pipes"].append(new_pipe())
-
-    # Move pipes + score
-    for p in state["pipes"]:
-        p["x"] -= PIPE_SPEED
-        if not p["scored"] and p["x"] + PIPE_W < RAT_X:
-            p["scored"]    = True
-            state["score"] += 1
-            state["best"]   = max(state["best"], state["score"])
-
     state["pipes"] = [p for p in state["pipes"] if p["x"] + PIPE_W > -10]
 
-    # Collision
     hitbox = RAT_R - 5
     ry     = state["rat_y"]
     dead   = ry - hitbox < 0 or ry + hitbox > H
@@ -463,21 +446,19 @@ def update(state):
                     ry + hitbox > p["gap_y"] + PIPE_GAP / 2):
                 dead = True
 
-    if dead:
+   if dead:
         state["mode"]        = "dead"
         state["dead_frames"] = 0
 
     if state["mode"] == "dead":
         state["dead_frames"] += 1
 
+# ── Main loop ──────────────────────────────────────────────────────────────────
 
 def main():
     state = make_state()
-    bg_surface = pygame.Surface((W, H))
-    draw_bg(bg_surface)  # draw the gradient once into bg_surface via screen then copy
-    bg_surface.blit(screen, (0, 0))
-
     running = True
+
     while running:
         clock.tick(60)
 
@@ -486,31 +467,39 @@ def main():
                 running = False
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_SPACE, pygame.K_UP):
-                    flap(state)
+                    do_flap(state)
             if event.type == pygame.MOUSEBUTTONDOWN:
-                flap(state)
+                do_flap(state)
 
         update(state)
-
-        # Render
+   
+        # --- Render ---
         screen.blit(bg_surface, (0, 0))
-        draw_stars(state["stars"], state["tick"])
+
+        for p in state["planets"]:
+            draw_planet(screen, p)
+
+        draw_stars(screen, state["stars"], state["tick"])
+
+        for c in state["comets"]:
+            draw_comet(screen, c)
 
         for p in state["pipes"]:
-            draw_pipe(p)
+            draw_pipe(screen, p)
 
         if state["mode"] == "idle":
-            bob_y = H / 2 + math.sin(pygame.time.get_ticks() * 0.002) * 8
+            bob_y = H / 2 + math.sin(pygame.time.get_ticks() * 0.0018) * 10
             draw_rat(screen, bob_y, 0, state["tick"])
-            draw_idle()
+            draw_idle(screen)
         else:
+            draw_trail(screen, state["trail"])
             draw_rat(screen, state["rat_y"], state["rat_vy"], state["tick"])
             if state["mode"] == "playing":
-                draw_score(state["score"])
+                draw_score(screen, state["score"])
             elif state["mode"] == "dead":
-                draw_score(state["score"])
+                draw_score(screen, state["score"])
                 if state["dead_frames"] > 20:
-                    draw_dead(state["score"], state["best"])
+                    draw_dead(screen, state["score"], state["best"])
 
         pygame.display.flip()
 
@@ -519,3 +508,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+  

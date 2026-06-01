@@ -95,7 +95,6 @@ for _y in range(H):
     b = int(14 + 40 * t)
     pygame.draw.line(bg_surface, (r, g, b), (0, _y), (W, _y))
 
-
 def draw_planet(surf, p):
     cx, cy, r = int(p["x"]), int(p["y"]), int(p["r"])
     cr, cg, cb = p["color"]
