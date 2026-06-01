@@ -113,7 +113,7 @@ def draw_planet(surf, p):
     pygame.draw.circle(hi_surf, (255, 255, 255, 35), (hi_r, hi_r), hi_r)
     surf.blit(hi_surf, (cx - r // 2 - hi_r, cy - r // 2 - hi_r))
 
-# Bands
+    # Bands
     br, bg2, bb = p["band"]
     band_surf = pygame.Surface((r * 2 + 2, r * 2 + 2), pygame.SRCALPHA)
     band_surf.set_clip(pygame.Rect(1, 1, r * 2, r * 2))
