@@ -319,22 +319,67 @@ def draw_button(surf, label, font, bx, by, bw, bh,
 
 
 def draw_idle(surf):
-    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 195)
+    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 210)
     blit_centered(surf, "SPACE", font_xl, (255, 255, 255), H // 2 - 100)
     blit_centered(surf, "RAT",   font_xl, (255, 221, 0),   H // 2 - 52)
     draw_button(surf, "START", font_md, W // 2 - 70, H // 2 + 4, 140, 46)
     hint = font_sm.render("or press Space / Up", True, (180, 160, 255))
     surf.blit(hint, (W // 2 - hint.get_width() // 2, H // 2 + 62))
 
+def draw_dead(surf, score, best):
+    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 195)
+
+    blit_centered(
+        surf,
+        "GAME OVER",
+        font_xl,
+        (255, 80, 80),
+        H // 2 - 95
+    )
+
+    blit_centered(
+        surf,
+        f"SCORE: {score}",
+        font_md,
+        (255, 255, 255),
+        H // 2 - 20
+    )
+
+    blit_centered(
+        surf,
+        f"HIGH SCORE: {best}",
+        font_md,
+        (255, 221, 0),
+        H // 2 + 15
+    )
+
+    draw_button(
+        surf,
+        "RETRY",
+        font_md,
+        W // 2 - 70,
+        H // 2 + 55,
+        140,
+        46
+    )
 
 def draw_dead(surf, score, best):
-    draw_panel(surf, W // 2 - 145, H // 2 - 120, 290, 240, border=(200, 50, 50))
-    blit_centered(surf, "GAME OVER", font_lg, (255, 80, 80),  H // 2 - 108)
-    blit_centered(surf, "SCORE",     font_sm, (200, 200, 200),H // 2 - 64)
-    blit_centered(surf, str(score),  font_xl, (255, 221, 0),  H // 2 - 36)
-    blit_centered(surf, "BEST",      font_sm, (170, 170, 170),H // 2 + 16)
-    blit_centered(surf, str(best),   font_md, (208, 176, 255),H // 2 + 38)
-    draw_button(surf, "RETRY", font_sm, W // 2 - 55, H // 2 + 76, 110, 38)
+    # exact hetzelfde paneel en randkleur (100, 60, 200) als het startscherm
+    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 250)
+    
+    # Grote titels in de stijl van 'SPACE RAT'
+    blit_centered(surf, "GAME",  font_xl, (255, 255, 255), H // 2 - 100)
+    blit_centered(surf, "OVER",  font_xl, (255, 80, 80),    H // 2 - 52)   # Rood voor 'Over'
+    
+    # De scores compact en strak weergegeven via font_md
+    blit_centered(surf, f"SCORE: {score} | BEST: {best}", font_md, (208, 176, 255), H // 2 + 4)
+    
+    # De RETRY knop in exact dezelfde afmetingen en positie als de START knop
+    draw_button(surf, "RETRY", font_md, W // 2 - 70, H // 2 + 36, 140, 46)
+    
+    # De handige kleine hint onder de knop
+    hint = font_sm.render("or press Space / Up", True, (180, 160, 255))
+    surf.blit(hint, (W // 2 - hint.get_width() // 2, H // 2 + 85))
 
 
 def draw_score(surf, score):
@@ -378,6 +423,7 @@ def start_game(state):
         "dead_frames": 0,
         "best":        best,
         "trail":       [],
+        "shake":       0,
     })
 
 
@@ -415,6 +461,17 @@ def update(state):
                 c["active"] = False
                 c["timer"]  = random.randint(180, 500)
     
+    if state["mode"] == "dead":
+        state["dead_frames"] += 1
+
+        # 2 seconden shake bij 17 FPS
+        if state["dead_frames"] < 17:
+            state["shake"] = max(1, 20 - state["dead_frames"] // 6)
+        else:
+            state["shake"] = 0
+
+        return
+
     if state["mode"] != "playing":
         return
 
@@ -459,7 +516,7 @@ def update(state):
     if state["mode"] == "dead":
         state["dead_frames"] += 1
 
-        if state["dead_frames"] < 20:
+        if state["dead_frames"] < 15:
             state["shake"] = 20 - state["dead_frames"]
         else:
             state["shake"] = 0
@@ -484,7 +541,7 @@ def main():
                     do_flap(state)
 
         update(state)
-   
+
         # --- Render ---
         render_surf = pygame.Surface((W, H))
         
@@ -508,22 +565,29 @@ def main():
         else:
             draw_trail(render_surf, state["trail"])
             draw_rat(render_surf, state["rat_y"], state["rat_vy"], state["tick"])
+
             if state["mode"] == "playing":
                 draw_score(render_surf, state["score"])
             elif state["mode"] == "dead":
                 draw_score(render_surf, state["score"])
-                if state["dead_frames"] > 20:
-                    draw_dead(render_surf, state["score"], state["best"])
 
-        if state["shake"] > 0:
-            intensiteit = max(1, int(state["shake"] / 3)) 
-            shake_x = random.randint(-intensiteit, intensiteit)
-            shake_y = random.randint(-intensiteit, intensiteit)
-            screen.blit(render_surf, (shake_x, shake_y))
-        else:
-            screen.blit(render_surf, (0, 0))
+            # toon game over pas nadat de shake klaar is
+            if state["dead_frames"] >= 25:
+                draw_dead(
+                    render_surf,
+                    state["score"],
+                    state["best"]
+                )
 
-        pygame.display.flip()
+            if state["shake"] > 0:
+                intensiteit = max(1, int(state["shake"] / 3)) 
+                shake_x = random.randint(-intensiteit, intensiteit)
+                shake_y = random.randint(-intensiteit, intensiteit)
+                screen.blit(render_surf, (shake_x, shake_y))
+            else:
+                screen.blit(render_surf, (0, 0))
+
+            pygame.display.flip()
 
     pygame.quit()
 
