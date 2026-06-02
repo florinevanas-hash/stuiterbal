@@ -543,15 +543,16 @@ def main():
                     state["best"]
                 )
 
-            if state["shake"] > 0:
-                intensiteit = max(1, int(state["shake"] / 3)) 
-                shake_x = random.randint(-intensiteit, intensiteit)
-                shake_y = random.randint(-intensiteit, intensiteit)
-                screen.blit(render_surf, (shake_x, shake_y))
-            else:
-                screen.blit(render_surf, (0, 0))
+        # Always blit the prepared render surface and flip the display.
+        if state["shake"] > 0:
+            intensiteit = max(1, int(state["shake"] / 3))
+            shake_x = random.randint(-intensiteit, intensiteit)
+            shake_y = random.randint(-intensiteit, intensiteit)
+            screen.blit(render_surf, (shake_x, shake_y))
+        else:
+            screen.blit(render_surf, (0, 0))
 
-            pygame.display.flip()
+        pygame.display.flip()
 
     pygame.quit()
 
