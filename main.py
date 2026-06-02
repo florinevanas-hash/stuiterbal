@@ -326,46 +326,10 @@ def draw_idle(surf):
     hint = font_sm.render("or press Space / Up", True, (180, 160, 255))
     surf.blit(hint, (W // 2 - hint.get_width() // 2, H // 2 + 62))
 
-def draw_dead(surf, score, best):
-    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 195)
-
-    blit_centered(
-        surf,
-        "GAME OVER",
-        font_xl,
-        (255, 80, 80),
-        H // 2 - 95
-    )
-
-    blit_centered(
-        surf,
-        f"SCORE: {score}",
-        font_md,
-        (255, 255, 255),
-        H // 2 - 20
-    )
-
-    blit_centered(
-        surf,
-        f"HIGH SCORE: {best}",
-        font_md,
-        (255, 221, 0),
-        H // 2 + 15
-    )
-
-    draw_button(
-        surf,
-        "RETRY",
-        font_md,
-        W // 2 - 70,
-        H // 2 + 55,
-        140,
-        46
-    )
 
 def draw_dead(surf, score, best):
     # exact hetzelfde paneel en randkleur (100, 60, 200) als het startscherm
-    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 250)
+    draw_panel(surf, W // 2 - 145, H // 2 - 115, 290, 240)
     
     # Grote titels in de stijl van 'SPACE RAT'
     blit_centered(surf, "GAME",  font_xl, (255, 255, 255), H // 2 - 100)
